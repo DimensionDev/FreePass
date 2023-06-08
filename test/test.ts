@@ -12,6 +12,7 @@ describe("FreePass", () => {
   let signer1: Signer;
   let signer2: Signer;
   let signer3: Signer;
+  let signer4: Signer;
   let deployerAddress: string;
   let signer1Address: string;
   let signer2Address: string;
@@ -20,12 +21,12 @@ describe("FreePass", () => {
   let freePassContract: FreePass;
   let maskToken: MaskToken;
 
-  let airdropList: string[] = [];
+  let whitelist: string[] = [];
   let merkleTree: MerkleTree;
   let merkleRoot: string;
 
   before(async () => {
-    [deployer, signer1, signer2, signer3] = await ethers.getSigners();
+    [deployer, signer1, signer2, signer3, signer4] = await ethers.getSigners();
     deployerAddress = await deployer.getAddress();
     signer1Address = await signer1.getAddress();
     signer2Address = await signer2.getAddress();
@@ -35,10 +36,10 @@ describe("FreePass", () => {
     await maskToken.transfer(freePassContract.address, utils.parseEther("100"));
     expect(await maskToken.balanceOf(freePassContract.address)).to.be.eq(utils.parseEther("100"));
 
-    airdropList.push(utils.keccak256(signer1Address));
-    airdropList.push(utils.keccak256(signer2Address));
-    airdropList.push(utils.keccak256(signer3Address));
-    merkleTree = new MerkleTree(airdropList, utils.keccak256, { sortPairs: true });
+    whitelist.push(utils.keccak256(signer1Address));
+    whitelist.push(utils.keccak256(signer2Address));
+    whitelist.push(utils.keccak256(signer3Address));
+    merkleTree = new MerkleTree(whitelist, utils.keccak256, { sortPairs: true });
     merkleRoot = merkleTree.getHexRoot();
   });
 
@@ -93,7 +94,7 @@ describe("FreePass", () => {
     );
   });
 
-  it("Claim Test", async () => {
+  it("Test regular mint process", async () => {
     let leaf = utils.keccak256(signer1Address);
     let proof = merkleTree.getHexProof(leaf);
     expect(merkleTree.verify(proof, leaf, merkleRoot)).to.be.true;
@@ -119,7 +120,7 @@ describe("FreePass", () => {
     expect(await freePassContract.isMinted(index, signer1Address)).to.be.true;
     expect(await freePassContract.balanceOf(signer1Address)).to.be.eq(1);
 
-    // Fail Case: already claimed
+    // Fail Case: already minted
     await expect(freePassContract.freeMint(index, proof, signer1Address)).to.be.revertedWith(
       "FreePass: Already minted!",
     );
@@ -141,6 +142,27 @@ describe("FreePass", () => {
     // Fail Case: expired
     await network.provider.send("evm_increaseTime", [1001]);
     await expect(freePassContract.freeMint(index, proof, signer2Address)).to.be.revertedWith("FreePass: Expired!");
+
+    let signer4Address = await signer4.getAddress();
+    leaf = utils.keccak256(signer4Address);
+    proof = merkleTree.getHexProof(leaf);
+    // signer 4 not on the whitelist
+    expect(merkleTree.verify(proof, leaf, merkleRoot)).to.be.false;
+
+    index = await freePassContract.eventIndex();
+    await freePassContract["setupEvent(address,uint256,uint256,bytes32)"](
+      maskToken.address,
+      constants.Zero,
+      BigNumber.from(1000),
+      merkleRoot,
+    );
+    expect(await freePassContract.balanceOf(signer4Address)).to.be.eq(BigNumber.from(0));
+
+    await freePassContract.setFreeMint(true);
+
+    // can still mint if isFreeMint == true
+    await freePassContract.freeMint(index, proof, signer4Address);
+    expect(await freePassContract.balanceOf(signer4Address)).to.be.eq(1);
   });
 
   it("Update merkle root", async () => {
@@ -159,7 +181,7 @@ describe("FreePass", () => {
     await freePassContract.freeMint(index, proof, signer1Address); // make sure signer1 can claim
     await network.provider.send("evm_revert", [beforeClaimSnapshot]);
 
-    const newList = airdropList.slice(1, 3); // remove signer1 from the list
+    const newList = whitelist.slice(1, 3); // remove signer1 from the list
     let tree = new MerkleTree(newList, utils.keccak256, { sortPairs: true });
     let root = "0x" + tree.getRoot().toString("hex");
     expect(tree.verify(tree.getProof(leaf), leaf, root)).to.be.false;

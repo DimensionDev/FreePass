@@ -16,6 +16,7 @@ contract FreePass is ERC721Enumerable, Ownable {
         mapping(address => bool) mintedAddresses;
     }
 
+    bool public isFreeMint;
     uint256 public eventIndex;
     uint256 public tokenIndex;
     mapping(uint256 => MintEvent) public mintEvents;
@@ -59,6 +60,10 @@ contract FreePass is ERC721Enumerable, Ownable {
         }
     }
 
+    function setFreeMint(bool _freeMint) public onlyOwner {
+        isFreeMint = _freeMint;
+    }
+
     function updateMerkleRoot(uint256 _eventIndex, bytes32 _merkleRoot) public onlyOwner {
         mintEvents[_eventIndex].merkleRoot = _merkleRoot;
     }
@@ -79,15 +84,18 @@ contract FreePass is ERC721Enumerable, Ownable {
         MintEvent storage mintEvent = mintEvents[_eventIndex];
         require(block.timestamp >= mintEvent.startTime, "FreePass: Have not started!");
         require(block.timestamp <= mintEvent.endTime, "FreePass: Expired!");
-        require(!mintEvent.mintedAddresses[_to], "FreePass: Already minted!");
 
-        bytes32 leaf = keccak256(abi.encodePacked(_to));
-        require(MerkleProof.verify(_merkleProof, mintEvent.merkleRoot, leaf), "FreePass: Unable to verify");
+        if (!isFreeMint) {
+            require(!mintEvent.mintedAddresses[_to], "FreePass: Already minted!");
+            bytes32 leaf = keccak256(abi.encodePacked(_to));
+            require(MerkleProof.verify(_merkleProof, mintEvent.merkleRoot, leaf), "FreePass: Unable to verify");
+            mintEvent.mintedAddresses[_to] = true;
+        }
 
-        mintEvent.mintedAddresses[_to] = true;
         if (mintEvent.price > 0) {
             IERC20(mintEvent.token).transferFrom(msg.sender, address(this), mintEvent.price);
         }
+
         _safeMint(_to, tokenIndex);
         unchecked {
             ++tokenIndex;
