@@ -1,27 +1,33 @@
-# Hardhat Template
+# Firefly Pass
 
-To develop a hardhat contract project, we always need some frequently used dependencies which are not included in the basic hardhat project. Furthermore, we also need several tools to unify the coding style between collaborative workers. In fact, these pre-requisite are always configured similarly in different projects. So, I established this template to help us start a hardhat project in a more convenient way.
+Firefly promotion NFT: PASS. It is an `ERC721Enumerable`. We provide public sale and whitelist sale.
 
-## Start
+## Dev
 
-### Install dependencies
+Check the contract source code at [`FireflyPass.sol`](contracts/FireflyPass.sol)
 
-```shell
-npm install
+### Typechain
+
+If you want get the typechain thing, pull this repo and run:
+
+```bash
+  npm run compile
 ```
 
-### Get extensions
+### Deployment
 
-Recommend extensions are listed in the file `./.vscode/extensions.json`. If you go to vscode extension list, you could see all recommended extensions directly.
+| Chain | Address |
+| ----- | ------- |
+|       |         |
 
-### Final step
+## Usage
 
-Now you can start your development!
+Check the provided function at [`Functions.md`](doc/Functions.md)
 
 ## Contribute
 
 Any contribution is welcomed to make it better.
 
-If you have any questions, please create an [issue](https://github.com/SpaceStation09/hardhat-template/issues).
+If you have any questions, please create an [issue](https://github.com/DimensionDev/FreePass/issues).
 
 **Enjoy!**
