@@ -15,7 +15,7 @@ We use this function to start an activity and set up the related info of this ac
 
 - Parameters:
 
-  - `_paymentToken`: the required payment token address.
+  - `_paymentToken`: the required payment token address. Zero address for native token
   - `_price`: the initial sale price for `Pass`.
   - `_merkleRoot`: the root of the merkle tree which maintain the whitelist.
 
@@ -30,7 +30,7 @@ We use this function to start an activity and set up the related info of this ac
 - Events:
 
   ```solidity
-    event ActivityStarted(uint256 currentTime, uint256 price, bytes32 merkleRoot);
+    event ActivityStarted(uint256 currentTime, address paymentToken, uint256 price, bytes32 merkleRoot);
   ```
 
 ## setPublicMint
@@ -92,12 +92,11 @@ function changePrice(address _paymentToken, uint256 _newPrice) external onlyOwne
 
 ```
 
-**TBD: Payment token is allowed to be changed**
 Use this function to change the sale price and payment token.
 
 - Parameters:
 
-  - `_paymentToken`: new payment token.
+  - `_paymentToken`: new payment token address, zero address for native token.
   - `_newPrice`: new sale price.
 
 - Requirement:
@@ -111,7 +110,7 @@ Use this function to change the sale price and payment token.
 - Events:
 
   ```solidity
-  emit PriceChanged(price, _newPrice);
+  event PriceChanged(address oldToken, uint256 oldPrice, address newToken, uint256 newPrice);
   ```
 
 ## withdrawToken
@@ -125,7 +124,7 @@ Use this function to withdraw the income. If the `amount` is currently larger th
 
 - Parameters:
 
-  - `_token`: the payment token
+  - `_token`: the payment token address, zero address for native token.
   - `_amount`: the token amount
 
 - Requirement:
@@ -161,16 +160,17 @@ This is a getter function generated automatically for `mintedAddresses` mapping.
 ## freeMint
 
 ```solidity
-function freeMint(bytes32[] calldata _merkleProof, address _to) public {}
+function freeMint(bytes32[] calldata _merkleProof, address _to) public payable {}
 
 ```
 
 - Workflow:
 
-  - Airdrop rule(TBD):
+  - Airdrop rule:
 
     - Require `msg.sender` equals the contract owner address.
     - If the above is satisfied, mint to the given address directly.
+    - **Owner cannot airdrop to itself unless it is in whitelist**
 
   - Sale rule:
     - Public sale:
@@ -193,4 +193,10 @@ function freeMint(bytes32[] calldata _merkleProof, address _to) public {}
   - N/A
 
 - Events:
-  - N/A
+
+  ```solidity
+  event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+
+  ```
+
+  It emits an event `Transfer` defined in standard ERC721 lib and the `from` is zero address.
